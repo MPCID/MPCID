@@ -949,67 +949,47 @@ async function fetchSunTimes(address) {
   const CWA_KEY = 'CWA-7786AF4C-9989-458E-9234-0F369CEFFABE';
   const now = new Date();
   const pad = n => String(n).padStart(2,'0');
-  const todayStr = now.toISOString().split('T')[0];
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
   const tom = new Date(now); tom.setDate(now.getDate()+1);
-  const tomNextDay = new Date(tom); tomNextDay.setDate(tom.getDate()+1);
-  const tomStr = tom.toISOString().split('T')[0];
-  const tomNextStr = tomNextDay.toISOString().split('T')[0];
+  const tomStr = `${tom.getFullYear()}-${pad(tom.getMonth()+1)}-${pad(tom.getDate())}`;
+  const tom2 = new Date(tom); tom2.setDate(tom.getDate()+1);
+  const tom2Str = `${tom2.getFullYear()}-${pad(tom2.getMonth()+1)}-${pad(tom2.getDate())}`;
 
   try {
-    // 使用 CountyName 參數（與原版作者相同）
-    const url = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/A-B0062-001?Authorization=${CWA_KEY}&format=JSON&CountyName=${encodeURIComponent(city)}&timeFrom=${todayStr}&timeTo=${tomNextStr}`;
+    const url = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/A-B0062-001`
+      + `?Authorization=${CWA_KEY}`
+      + `&format=JSON`
+      + `&CountyName=${encodeURIComponent(city)}`
+      + `&timeFrom=${todayStr}`
+      + `&timeTo=${tom2Str}`;
 
     const resp = await fetch(url);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const L = await resp.json();
 
-    debugLog(`【API回傳】success=${L.success}
-${JSON.stringify(L.records).slice(0,600)}`);
+    if (L.success !== 'true') throw new Error('API success=false');
 
-    if (L.success !== 'true') throw new Error('success != true');
+    // 結構：records.locations.location[0].time[]
+    // 每筆 time 直接有 Date, SunRiseTime, SunSetTime
+    const times = L?.records?.locations?.location?.[0]?.time;
+    if (!times || !times.length) throw new Error('no time data');
 
-    // 解析路徑：records.location 或 records.locations.location
-    const locs = (L.records?.location) ||
-                 (L.records?.locations?.location) || [];
-    if (!locs.length) throw new Error('no location data');
-
-    const times = locs[0].time || [];
-    if (!times.length) throw new Error('no time data');
-
-    // 找今天日落、明天日出
     let todaySunset = null, tomSunrise = null;
 
-    const findParam = (paramArr, keywords) => {
-      const p = paramArr?.find(ae =>
-        keywords.some(k => (ae.parameterName || ae.parameterName2 || '').includes(k))
-      );
-      return p ? (p.parameterValue || '') : null;
-    };
-
     for (const t of times) {
-      const d = (t.Date || t.dataTime || '').slice(0, 10);
-      const params = t.parameter || [];
-      if (d === todayStr) {
-        todaySunset = findParam(params, ['日沒', '日落', 'Sunset', 'SunSet']);
-      }
-      if (d === tomStr) {
-        tomSunrise = findParam(params, ['日出', 'Sunrise', 'SunRise']);
-      }
+      const d = (t.Date || '').slice(0, 10);
+      if (d === todayStr && t.SunSetTime)  todaySunset = t.SunSetTime.slice(0, 5);
+      if (d === tomStr   && t.SunRiseTime) tomSunrise  = t.SunRiseTime.slice(0, 5);
     }
 
-    // fallback：若只有一筆資料
-    if (!todaySunset || !tomSunrise) {
-      for (const t of times) {
-        const params = t.parameter || [];
-        if (!todaySunset) todaySunset = findParam(params, ['日沒', '日落', 'Sunset', 'SunSet']);
-        if (!tomSunrise)  tomSunrise  = findParam(params, ['日出', 'Sunrise', 'SunRise']);
-      }
-    }
+    // fallback：只有一筆時用同一筆
+    if (!todaySunset && times[0]?.SunSetTime)  todaySunset = times[0].SunSetTime.slice(0, 5);
+    if (!tomSunrise  && times[0]?.SunRiseTime) tomSunrise  = times[0].SunRiseTime.slice(0, 5);
 
-    if (!todaySunset || !tomSunrise) throw new Error('找不到日出日落欄位，請截圖除錯框');
+    if (!todaySunset || !tomSunrise) throw new Error('找不到欄位');
 
-    sunsetTime     = todaySunset.slice(0, 5);
-    sunriseNextDay = tomSunrise.slice(0, 5);
+    sunsetTime     = todaySunset;
+    sunriseNextDay = tomSunrise;
 
     debugLog(`✅ ${city} 日落:${sunsetTime} 日出:${sunriseNextDay}`);
     el.className = 'sunrise-info success';
@@ -1022,8 +1002,7 @@ ${JSON.stringify(L.records).slice(0,600)}`);
     recalculate();
 
   } catch(e) {
-    debugLog(`【失敗】${e.message}
-改用NOAA估算`);
+    debugLog(`【失敗】${e.message}`);
     el.className = 'sunrise-info warn';
     el.textContent = `🟠 氣象局查詢失敗（${e.message}），改用 NOAA 估算。`;
     computeSunTimesNoaa(address);
