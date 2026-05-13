@@ -2,267 +2,403 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Accept-CH" content="Sec-CH-UA-Arch">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>解送人犯法定障礙事由計算機（憲兵版）</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --green: #4fc3f7;
+    --green-dark: #0d2d45;
+    --green-light: #81d4fa;
+    --khaki: #4fc3f7;
+    --khaki-light: #e1f5fe;
+    --tan: #b3e5fc;
+    --dark: #0a1520;
+    --dark2: #0f1e2e;
+    --dark3: #162435;
+    --panel: #0d1b2a;
+    --border: #1e3a52;
+    --text: #cce8f4;
+    --text-dim: #5a8fa8;
+    --amber: #ffd54f;
+    --red: #ef5350;
+  }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
   body {
     font-family: 'DFKai-SB', '標楷體', 'BiauKai', 'Noto Serif TC', serif;
     font-weight: normal;
-    background: #f0f2f5;
-    color: #1a1a2e;
+    background: var(--dark);
+    color: var(--text);
     min-height: 100vh;
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.05) 2px,
+        rgba(0,0,0,0.05) 4px
+      );
   }
+
+  /* scanline effect */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 3px,
+      rgba(0,0,0,0.08) 3px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
   header {
-    background: linear-gradient(135deg, #1a3a5c 0%, #0d2137 100%);
-    color: white;
-    padding: 18px 24px;
+    background: linear-gradient(135deg, var(--dark2) 0%, var(--dark) 100%);
+    color: var(--khaki-light);
+    padding: 16px 24px;
     display: flex;
     align-items: center;
     gap: 14px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+    border-bottom: 2px solid var(--green);
+    box-shadow: 0 2px 15px rgba(79,195,247,0.2);
+    position: relative;
   }
-  header .logo {
-    width: 48px; height: 48px;
-    background: #c8a84b;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 22px; font-weight: bold; color: #1a3a5c;
-    flex-shrink: 0;
-    border: 2px solid #e8c86a;
+  header::after {
+    content: '█ CLASSIFIED █';
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--red);
+    letter-spacing: 2px;
+    opacity: 0.7;
+    animation: blink 2s step-end infinite;
   }
-  header h1 { font-size: 1.25rem; line-height: 1.4; }
-  header p { font-size: 0.78rem; opacity: 0.75; margin-top: 2px; }
+  @keyframes blink { 50% { opacity: 0; } }
 
-  .main { max-width: 900px; margin: 0 auto; padding: 20px 16px 60px; }
+  header .logo {
+    width: 52px; height: 52px;
+    background: var(--green-dark);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: bold; color: var(--khaki-light);
+    flex-shrink: 0;
+    border: 2px solid var(--green);
+    box-shadow: 0 0 10px rgba(79,195,247,0.3), inset 0 0 6px rgba(0,0,0,0.4);
+    clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+  }
+  header h1 {
+    font-size: 1.15rem;
+    line-height: 1.4;
+    color: var(--green-light);
+    letter-spacing: 1px;
+  }
+  header p {
+    font-size: 0.75rem;
+    color: var(--green-light);
+    margin-top: 3px;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 0.5px;
+  }
+
+  .main { max-width: 920px; margin: 0 auto; padding: 20px 16px 60px; }
 
   /* Alert banner */
   .alert-banner {
     display: none;
-    background: #fff3cd;
-    border: 1px solid #ffc107;
-    border-radius: 8px;
-    padding: 12px 16px;
+    background: rgba(139,58,58,0.2);
+    border: 1px solid var(--red);
+    border-radius: 4px;
+    padding: 10px 16px;
     margin-bottom: 16px;
-    font-size: 0.88rem;
-    color: #856404;
+    font-size: 0.85rem;
+    color: #e07070;
+    font-family: 'Share Tech Mono', monospace;
   }
   .alert-banner.show { display: block; }
 
   /* Document buttons */
   .doc-buttons {
-    display: flex; gap: 10px; flex-wrap: wrap;
-    margin-bottom: 20px;
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 18px;
   }
   .doc-btn {
-    background: #1a3a5c;
-    color: white;
-    border: none;
-    padding: 10px 18px;
-    border-radius: 6px;
+    background: var(--dark2);
+    color: var(--khaki-light);
+    border: 1px solid var(--green);
+    padding: 8px 14px;
+    border-radius: 2px;
     cursor: pointer;
-    font-size: 0.88rem;
-    font-family: inherit;
+    font-size: 0.83rem;
+    font-family: 'DFKai-SB', '標楷體', 'BiauKai', serif;
     display: flex; align-items: center; gap: 6px;
-    transition: background 0.2s;
+    transition: all 0.15s;
+    clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+    letter-spacing: 0.5px;
   }
-  .doc-btn:hover { background: #245282; }
+  .doc-btn:hover {
+    background: var(--green-dark);
+    border-color: var(--green-light);
+    box-shadow: 0 0 8px rgba(79,195,247,0.4);
+  }
   .doc-btn .badge {
-    background: #c8a84b;
-    color: #1a3a5c;
-    font-size: 0.75rem;
-    font-weight: bold;
-    padding: 1px 6px;
-    border-radius: 3px;
+    background: var(--green-dark);
+    color: var(--khaki-light);
+    font-size: 0.7rem;
+    padding: 1px 5px;
+    border-radius: 2px;
+    border: 1px solid var(--green);
+    font-family: 'Share Tech Mono', monospace;
   }
 
   /* Card sections */
   .card {
-    background: white;
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 16px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-    border: 1px solid #e8edf2;
+    background: var(--panel);
+    border-radius: 2px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--green);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    position: relative;
   }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 0; height: 0;
+    border-left: 14px solid transparent;
+    border-top: 14px solid var(--green-dark);
+  }
+
   .card h2 {
-    font-size: 0.95rem;
-    color: #1a3a5c;
+    font-size: 0.88rem;
+    color: var(--green-light);
     margin-bottom: 16px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #e8edf2;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
     display: flex; align-items: center; gap: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 1px;
+    text-transform: uppercase;
   }
   .card h2::before {
-    content: '';
-    width: 4px; height: 16px;
-    background: #c8a84b;
-    border-radius: 2px;
-    display: inline-block;
+    content: '▶';
+    color: var(--amber);
+    font-size: 0.7rem;
   }
 
   /* Form grid */
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
-  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group { display: flex; flex-direction: column; gap: 4px; }
   .form-group.full { grid-column: 1 / -1; }
+
   label {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: normal;
-    color: #4a5568;
+    color: var(--text-dim);
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 0.5px;
   }
-  label .req { color: #e53e3e; }
+  label .req { color: var(--red); }
+
   input, select, textarea {
-    border: 1px solid #d1d9e0;
-    border-radius: 6px;
-    padding: 8px 10px;
-    font-size: 0.9rem;
-    font-family: inherit;
-    background: #fafbfc;
-    transition: border-color 0.2s;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 7px 10px;
+    font-size: 0.88rem;
+    font-family: 'DFKai-SB', '標楷體', 'BiauKai', serif;
+    font-weight: normal;
+    background: var(--dark2);
+    color: var(--text);
+    transition: border-color 0.15s, box-shadow 0.15s;
     width: 100%;
   }
   input:focus, select:focus, textarea:focus {
     outline: none;
-    border-color: #1a3a5c;
-    background: white;
+    border-color: var(--green);
+    box-shadow: 0 0 6px rgba(79,195,247,0.4);
+    background: var(--dark3);
   }
   select { cursor: pointer; }
-  .field-hint {
-    font-size: 0.75rem;
-    color: #718096;
-    margin-top: 2px;
-  }
-  .sunrise-info {
-    font-size: 0.8rem;
-    padding: 6px 10px;
-    border-radius: 5px;
-    margin-top: 4px;
-  }
-  .sunrise-info.success { color: #2b6cb0; background: #ebf8ff; border: 1px solid #bee3f8; }
-  .sunrise-info.warn { color: #c05621; background: #fffaf0; border: 1px solid #fbd38d; }
+  select option { background: var(--dark2); }
 
-  /* Offline inputs */
+  /* Force 24h on datetime-local */
+  input[type="datetime-local"] {
+    font-family: 'Share Tech Mono', monospace;
+  }
+  input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.6) sepia(1) saturate(2) hue-rotate(80deg);
+  }
+
+  .field-hint { font-size: 0.72rem; color: var(--text-dim); margin-top: 2px; font-family: 'Share Tech Mono', monospace; }
+
+  .sunrise-info {
+    font-size: 0.78rem;
+    padding: 5px 10px;
+    border-radius: 2px;
+    margin-top: 4px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+  .sunrise-info.success { color: var(--green-light); background: rgba(79,195,247,0.08); border: 1px solid var(--green); }
+  .sunrise-info.warn { color: var(--amber); background: rgba(255,213,79,0.08); border: 1px solid var(--amber); }
+
   .offline-inputs { display: none; margin-top: 12px; }
   .offline-inputs.show { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
   /* Reason items */
-  .reason-list { display: flex; flex-direction: column; gap: 10px; }
+  .reason-list { display: flex; flex-direction: column; gap: 8px; }
   .reason-item {
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 14px;
-    background: #f7fafc;
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--khaki);
+    border-radius: 2px;
+    padding: 12px;
+    background: var(--dark2);
     position: relative;
   }
   .reason-item-header {
-    display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px;
+    display: flex; align-items: flex-start; gap: 8px; margin-bottom: 10px;
   }
   .reason-type-label {
     flex: 1;
-    font-size: 0.85rem;
+    font-size: 0.83rem;
     font-weight: normal;
-    color: #2d3748;
-    line-height: 1.4;
+    color: var(--text);
+    line-height: 1.5;
   }
   .reason-badge {
-    background: #1a3a5c;
-    color: white;
-    font-size: 0.72rem;
-    padding: 2px 8px;
-    border-radius: 10px;
+    background: var(--green-dark);
+    color: var(--khaki-light);
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 2px;
     white-space: nowrap;
+    font-family: 'Share Tech Mono', monospace;
+    border: 1px solid var(--green);
   }
   .reason-time-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
   @media (max-width: 500px) { .reason-time-grid { grid-template-columns: 1fr; } }
   .reason-duration {
-    font-size: 0.8rem;
-    color: #2b6cb0;
-    background: #ebf8ff;
+    font-size: 0.78rem;
+    color: var(--green-light);
+    background: rgba(74,124,89,0.1);
     padding: 4px 8px;
-    border-radius: 4px;
+    border-radius: 2px;
     margin-top: 4px;
+    font-family: 'Share Tech Mono', monospace;
+    border: 1px solid var(--border);
   }
   .btn-remove {
-    background: #fc8181;
-    color: white;
-    border: none;
-    border-radius: 50%;
+    background: rgba(139,58,58,0.3);
+    color: #e07070;
+    border: 1px solid var(--red);
+    border-radius: 2px;
     width: 22px; height: 22px;
-    font-size: 14px;
+    font-size: 12px;
     cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
-    transition: background 0.2s;
+    transition: all 0.15s;
   }
-  .btn-remove:hover { background: #e53e3e; }
+  .btn-remove:hover { background: rgba(139,58,58,0.6); }
 
   .btn-add {
-    background: white;
-    color: #1a3a5c;
-    border: 2px dashed #a0aec0;
+    background: var(--dark2);
+    color: var(--green-light);
+    border: 1px dashed var(--border);
     padding: 10px;
-    border-radius: 8px;
+    border-radius: 2px;
     cursor: pointer;
-    font-size: 0.9rem;
-    font-family: inherit;
+    font-size: 0.85rem;
+    font-family: 'DFKai-SB', '標楷體', serif;
     width: 100%;
-    transition: all 0.2s;
-    margin-top: 10px;
+    transition: all 0.15s;
+    margin-top: 8px;
+    letter-spacing: 1px;
   }
-  .btn-add:hover { border-color: #1a3a5c; background: #f0f5fb; }
+  .btn-add:hover { border-color: var(--green); color: var(--khaki-light); background: var(--dark3); }
 
   /* Result card */
   .result-card {
-    background: linear-gradient(135deg, #1a3a5c 0%, #0d2137 100%);
-    color: white;
-    border-radius: 10px;
-    padding: 20px;
-    margin-bottom: 16px;
-    box-shadow: 0 4px 15px rgba(26,58,92,0.3);
+    background: var(--dark2);
+    border: 1px solid var(--green);
+    border-left: 3px solid var(--amber);
+    border-radius: 2px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    box-shadow: 0 0 20px rgba(79,195,247,0.15);
+    position: relative;
+    overflow: hidden;
   }
-  .result-card h2 { color: white; border-bottom-color: rgba(255,255,255,0.2); }
-  .result-card h2::before { background: #c8a84b; }
+  .result-card::after {
+    content: 'TOP SECRET';
+    position: absolute;
+    right: -28px; top: 18px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: rgba(139,58,58,0.4);
+    letter-spacing: 2px;
+    transform: rotate(90deg);
+  }
+  .result-card h2 {
+    color: var(--amber);
+    border-bottom-color: var(--border);
+  }
   .result-row {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    font-size: 0.9rem;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.88rem;
   }
   .result-row:last-child { border-bottom: none; }
-  .result-label { opacity: 0.8; }
-  .result-value { font-weight: bold; font-size: 1rem; color: #c8a84b; }
-  .result-final { color: white; font-size: 1.1rem; }
+  .result-label { color: var(--text-dim); font-family: 'Share Tech Mono', monospace; font-size: 0.8rem; }
+  .result-value { font-weight: bold; font-size: 0.95rem; color: var(--amber); font-family: 'Share Tech Mono', monospace; }
+  .result-final { color: var(--green-light); font-size: 1rem; }
 
   /* Export button */
   .btn-export {
-    background: #c8a84b;
-    color: #1a3a5c;
-    border: none;
+    background: var(--green-dark);
+    color: var(--khaki-light);
+    border: 1px solid var(--green);
     padding: 12px 24px;
-    border-radius: 8px;
+    border-radius: 2px;
     cursor: pointer;
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: bold;
-    font-family: inherit;
+    font-family: 'DFKai-SB', '標楷體', serif;
     width: 100%;
-    transition: background 0.2s;
+    transition: all 0.2s;
+    letter-spacing: 2px;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
   }
-  .btn-export:hover { background: #b8963b; }
+  .btn-export:hover {
+    background: var(--green);
+    box-shadow: 0 0 15px rgba(79,195,247,0.5);
+  }
 
   /* Modal */
   .modal-bg {
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0,0,0,0.75);
     z-index: 100;
     align-items: center;
     justify-content: center;
@@ -270,68 +406,91 @@
   }
   .modal-bg.show { display: flex; }
   .modal {
-    background: white;
-    border-radius: 10px;
-    padding: 24px;
-    max-width: 480px;
+    background: var(--panel);
+    border: 1px solid var(--green);
+    border-radius: 2px;
+    padding: 22px;
+    max-width: 500px;
     width: 100%;
     max-height: 80vh;
     overflow-y: auto;
+    box-shadow: 0 0 30px rgba(79,195,247,0.2);
   }
-  .modal h3 { margin-bottom: 16px; color: #1a3a5c; font-size: 1rem; }
+  .modal h3 {
+    margin-bottom: 14px;
+    color: var(--green-light);
+    font-size: 0.9rem;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
   .modal-option {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
-    padding: 10px;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
-    margin-bottom: 8px;
+    gap: 10px;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    margin-bottom: 6px;
     cursor: pointer;
     transition: all 0.15s;
+    background: var(--dark2);
   }
-  .modal-option:hover { border-color: #1a3a5c; background: #f0f5fb; }
+  .modal-option:hover { border-color: var(--green); background: var(--dark3); }
   .modal-option-num {
-    background: #1a3a5c;
-    color: white;
-    font-size: 0.75rem;
-    font-weight: normal;
-    padding: 2px 7px;
-    border-radius: 4px;
+    background: var(--green-dark);
+    color: var(--khaki-light);
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 2px;
     flex-shrink: 0;
     margin-top: 1px;
+    font-family: 'Share Tech Mono', monospace;
+    border: 1px solid var(--green);
   }
-  .modal-option-text { font-size: 0.87rem; color: #2d3748; line-height: 1.5; }
+  .modal-option-text { font-size: 0.85rem; color: var(--text); line-height: 1.5; }
   .btn-modal-cancel {
-    background: #edf2f7;
-    color: #4a5568;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 6px;
+    background: var(--dark2);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    padding: 8px 20px;
+    border-radius: 2px;
     cursor: pointer;
-    font-family: inherit;
-    font-size: 0.9rem;
+    font-family: 'DFKai-SB', '標楷體', serif;
+    font-size: 0.85rem;
     width: 100%;
-    margin-top: 10px;
+    margin-top: 8px;
+    transition: all 0.15s;
   }
-  .btn-modal-cancel:hover { background: #e2e8f0; }
+  .btn-modal-cancel:hover { border-color: var(--red); color: #e07070; }
 
   .warning-box {
-    background: #fff5f5;
-    border: 1px solid #fc8181;
-    border-radius: 6px;
-    padding: 10px 14px;
-    font-size: 0.82rem;
-    color: #c53030;
-    margin-bottom: 14px;
+    background: rgba(139,58,58,0.1);
+    border: 1px solid var(--red);
+    border-radius: 2px;
+    padding: 9px 12px;
+    font-size: 0.8rem;
+    color: #e07070;
+    margin-bottom: 12px;
     display: flex; gap: 8px; align-items: flex-start;
+    font-family: 'Share Tech Mono', monospace;
   }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--dark); }
+  ::-webkit-scrollbar-thumb { background: var(--green-dark); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--green); }
 
   footer {
     text-align: center;
-    font-size: 0.75rem;
-    color: #718096;
+    font-size: 0.72rem;
+    color: var(--text-dim);
     padding: 20px;
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 0.5px;
+    border-top: 1px solid var(--border);
   }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -342,7 +501,7 @@
   <div class="logo">憲</div>
   <div>
     <h1>解送人犯法定障礙事由計算機（憲兵版）</h1>
-    <p>依據《刑事訴訟法》第93條之1　製作：臺北憲兵隊軍偵組調查官吳鋐峮</p>
+    <p>依據《刑事訴訟法》第93條之1　製作人：臺北憲兵隊軍事偵察組調查官吳鋐峮</p>
   </div>
 </header>
 
@@ -366,8 +525,8 @@
     <h2>案件基本資料</h2>
     <div class="form-grid">
       <div class="form-group full">
-        <label>案由(涉案法條) <span class="req">*</span></label>
-        <input type="text" id="caseType" placeholder="例：涉嫌傷害、竊盜、違反陸海空軍刑法等">
+        <label>案由 <span class="req">*</span></label>
+        <input type="text" id="caseType" placeholder="例：傷害、竊盜、違反陸海空軍刑法">
       </div>
       <div class="form-group">
         <label>是否為通緝犯</label>
@@ -544,7 +703,7 @@
   </div>
 </div>
 
-<footer>解送人犯法定障礙事由計算機 v2.3（憲兵版）　設計：臺北憲兵隊偵防吳鋐峮　所有計算均在本地完成，個人資料不會上傳至任何伺服器。</footer>
+<footer>解送人犯法定障礙事由計算機 v2.3（憲兵版）　製作人：臺北憲兵隊軍事偵察組調查官吳鋐峮　所有計算均在本地完成，個人資料不會上傳至任何伺服器。</footer>
 
 <script>
 // ─── Data ───────────────────────────────────────────────────────────────────
@@ -602,6 +761,10 @@ let selectedUnit = null;
 
 // ─── Init ────────────────────────────────────────────────────────────────────
 window.addEventListener('load', () => {
+  // 強制所有 datetime-local 顯示24小時制
+  document.querySelectorAll('input[type="datetime-local"]').forEach(el => {
+    el.setAttribute('lang', 'en-GB');  // en-GB = 24h format
+  });
   // Set default arrest time to now
   const now = new Date();
   now.setSeconds(0, 0);
@@ -664,85 +827,139 @@ function clearSunInfo() {
 }
 
 // ─── Sun times via CWA ──────────────────────────────────────────────────────
+// ── 地址→縣市對照 ──────────────────────────────────────────
+function extractCity(address) {
+  const cityMap = {
+    '臺北市': '臺北市', '台北市': '臺北市',
+    '新北市': '新北市', '基隆市': '基隆市',
+    '桃園市': '桃園市', '新竹市': '新竹市', '新竹縣': '新竹縣',
+    '苗栗縣': '苗栗縣', '臺中市': '臺中市', '台中市': '臺中市',
+    '彰化縣': '彰化縣', '南投縣': '南投縣', '雲林縣': '雲林縣',
+    '嘉義市': '嘉義市', '嘉義縣': '嘉義縣',
+    '臺南市': '臺南市', '台南市': '臺南市',
+    '高雄市': '高雄市', '屏東縣': '屏東縣',
+    '宜蘭縣': '宜蘭縣', '花蓮縣': '花蓮縣', '臺東縣': '臺東縣', '台東縣': '臺東縣',
+    '澎湖縣': '澎湖縣', '金門縣': '金門縣', '連江縣': '連江縣',
+  };
+  for (const [key, val] of Object.entries(cityMap)) {
+    if (address.startsWith(key)) return val;
+  }
+  return '臺北市'; // 預設
+}
+
 async function fetchSunTimes(address) {
   clearSunInfo();
   const el = document.getElementById('sunriseInfo');
   el.style.display = 'block';
+  el.className = 'sunrise-info warn';
+  el.textContent = '⏳ 查詢日出日落時間中...';
 
   if (isOffline) {
-    el.className = 'sunrise-info warn';
-    el.textContent = '🟠 無法查詢／依經緯度由NOAA演算法計算日出日落時間。';
+    el.textContent = '🟠 無網路，使用 NOAA 演算法估算。';
     computeSunTimesNoaa(address);
     return;
   }
 
-  // Geocode address using Open-Meteo geocoding (free, no key)
+  const city = extractCity(address);
+  const CWA_KEY = 'CWA-7786AF4C-9989-458E-9234-0F369CEFFABE';
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  const tom = new Date(now); tom.setDate(now.getDate()+1);
+  const tomStr = `${tom.getFullYear()}-${pad(tom.getMonth()+1)}-${pad(tom.getDate())}`;
+
   try {
-    const geoResp = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(address)}&count=1&language=zh&format=json`
-    );
-    const geoData = await geoResp.json();
-    if (!geoData.results || !geoData.results.length) throw new Error('geocode fail');
-    const { latitude: lat, longitude: lon } = geoData.results[0];
+    // CWA A-B0062-001 日出日沒時刻
+    const url = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/A-B0062-001`
+      + `?Authorization=${CWA_KEY}`
+      + `&locationName=${encodeURIComponent(city)}`
+      + `&timeFrom=${todayStr}`
+      + `&timeTo=${tomStr}`
+      + `&format=JSON`;
 
-    const today = new Date();
-    const todayStr = today.toISOString().slice(0,10);
-    const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
-    const tomorrowStr = tomorrow.toISOString().slice(0,10);
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
 
-    const sunResp = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=sunrise,sunset&timezone=Asia/Taipei&start_date=${todayStr}&end_date=${tomorrowStr}`
-    );
-    const sunData = await sunResp.json();
-    if (!sunData.daily) throw new Error('sun fail');
+    // ── 印出原始結構供除錯（可打開 F12 主控台查看）
+    console.log('[CWA] raw data:', JSON.stringify(data).slice(0, 800));
 
-    // sunset today (index 0), sunrise tomorrow (index 1)
-    const sunset = sunData.daily.sunset[0];  // "2026-05-12T18:45"
-    const sunrise = sunData.daily.sunrise[1]; // "2026-05-13T05:23"
+    // CWA A-B0062-001 結構：
+    // data.records.location[].time[].parameter[]
+    //   parameter: [{parameterName:"日出時刻", parameterValue:"05:21"}, ...]
+    const locs = data?.records?.location;
+    if (!locs || !locs.length) throw new Error('no location');
 
-    sunsetTime = sunset.slice(11,16);
-    sunriseNextDay = sunrise.slice(11,16);
+    let todaySunset = null, tomSunrise = null;
+
+    for (const loc of locs) {
+      for (const t of (loc.time || [])) {
+        const d = (t.dataTime || t.Date || '').slice(0, 10);
+        for (const p of (t.parameter || [])) {
+          const name = p.parameterName || '';
+          const val  = (p.parameterValue || '').slice(0, 5);
+          if (d === todayStr && (name.includes('日沒') || name.includes('日落') || name.includes('Sunset'))) {
+            todaySunset = val;
+          }
+          if ((d === tomStr || d === todayStr) && (name.includes('日出') || name.includes('Sunrise'))) {
+            if (d === tomStr) tomSunrise = val;
+            else if (!tomSunrise) tomSunrise = val; // fallback 用今天日出
+          }
+        }
+      }
+    }
+
+    console.log('[CWA] parsed → sunset:', todaySunset, 'sunrise:', tomSunrise);
+
+    if (!todaySunset && !tomSunrise) throw new Error('parse fail — 請按 F12 查看 console');
+
+    // 若只有今天日出，用它當明天日出近似值
+    sunsetTime     = todaySunset  || '18:30';
+    sunriseNextDay = tomSunrise   || '05:30';
 
     el.className = 'sunrise-info success';
-    el.textContent = `🔵 已取得日出日落時間。今日日落 ${sunsetTime}，明日日出 ${sunriseNextDay}`;
+    el.textContent = `✅ 氣象局｜${city}　今日日落 ${sunsetTime}　明日日出 ${sunriseNextDay}`;
 
-    // Update any night-reason end times
     reasons.forEach(r => {
-      if (r.type === 2 && !r.endTime) {
-        r.endTime = getAutoNightEnd();
-      }
+      if (r.type === 2 && !r.endTime) r.endTime = getAutoNightEnd();
     });
     renderReasons();
     recalculate();
 
   } catch(e) {
+    console.warn('[CWA] error:', e.message);
     el.className = 'sunrise-info warn';
-    el.textContent = '🟠 無法查詢／依NOAA演算法計算日出日落時間。';
+    el.textContent = `🟠 氣象局查詢失敗（${e.message}），改用 NOAA 估算。`;
     computeSunTimesNoaa(address);
   }
 }
 
 function computeSunTimesNoaa(address) {
-  // Simple estimation based on Taiwan latitude ~23.5°N
-  // Approximate: sunrise 05:30, sunset 18:30 (adjust by season)
   const now = new Date();
   const dayOfYear = Math.floor((now - new Date(now.getFullYear(),0,0)) / 86400000);
-  // Solar declination approximation
   const decl = 23.45 * Math.sin((360/365 * (dayOfYear - 81)) * Math.PI / 180);
-  const lat = 23.5; // Taiwan approx
+  // 依地址選更精確的緯度
+  const city = extractCity(address);
+  const latMap = {
+    '連江縣':26.2, '基隆市':25.1, '臺北市':25.0, '新北市':24.9, '桃園市':24.9,
+    '新竹市':24.8, '新竹縣':24.7, '苗栗縣':24.5, '宜蘭縣':24.7,
+    '臺中市':24.1, '彰化縣':24.0, '南投縣':23.9, '雲林縣':23.7,
+    '嘉義市':23.5, '嘉義縣':23.4, '花蓮縣':23.9,
+    '臺南市':23.0, '高雄市':22.6, '臺東縣':22.7,
+    '屏東縣':22.3, '澎湖縣':23.6, '金門縣':24.4,
+  };
+  const lat = latMap[city] || 23.5;
   const cosH = -Math.tan(lat * Math.PI/180) * Math.tan(decl * Math.PI/180);
   let H = 0;
   if (cosH < -1) H = 12;
   else if (cosH > 1) H = 0;
   else H = Math.acos(cosH) * 180 / Math.PI / 15;
-  const sunriseH = 12 - H;
-  const sunsetH = 12 + H;
   const toHHMM = h => {
     const total = Math.round(h * 60);
     return String(Math.floor(total/60)).padStart(2,'0') + ':' + String(total%60).padStart(2,'0');
   };
-  sunsetTime = toHHMM(sunsetH);
-  sunriseNextDay = toHHMM(sunriseH);
+  sunsetTime    = toHHMM(12 + H);
+  sunriseNextDay = toHHMM(12 - H);
   recalculate();
 }
 
