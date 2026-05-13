@@ -483,6 +483,30 @@
   ::-webkit-scrollbar-thumb { background: var(--green-dark); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--green); }
 
+  /* 除錯視窗 */
+  #debugBox {
+    display: none;
+    background: #0a0a0a;
+    border: 1px solid var(--amber);
+    border-radius: 4px;
+    padding: 12px;
+    margin-top: 10px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--amber);
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 300px;
+    overflow-y: auto;
+    line-height: 1.6;
+  }
+  #debugBox .debug-title {
+    color: var(--red);
+    font-size: 0.78rem;
+    margin-bottom: 6px;
+    display: block;
+  }
+
   footer {
     text-align: center;
     font-size: 0.72rem;
@@ -604,6 +628,7 @@
         <label>機關地址</label>
         <input type="text" id="address" placeholder="選擇憲兵隊後自動帶入，亦可手動修改">
         <div class="sunrise-info" id="sunriseInfo" style="display:none"></div>
+        <div id="debugBox"><span class="debug-title">🔧 API 除錯訊息（確認後可告知製作人移除）</span><span id="debugContent"></span></div>
       </div>
 
       <!-- Offline inputs -->
@@ -771,7 +796,8 @@ window.addEventListener('load', () => {
   document.getElementById('arrestTime').value = now.toISOString().slice(0,16);
 
   // Check online
-  if (!navigator.onLine) { showOffline(); }
+  // 用實際 fetch 測試網路，比 navigator.onLine 可靠
+  checkOnlineStatus();
   window.addEventListener('offline', showOffline);
   window.addEventListener('online', () => {
     isOffline = false;
@@ -783,6 +809,32 @@ window.addEventListener('load', () => {
   renderModal();
   recalculate();
 });
+
+async function checkOnlineStatus() {
+  try {
+    // 用氣象局 API 直接測試（同時也確認 CORS 沒問題）
+    const test = await fetch(
+      'https://opendata.cwa.gov.tw/api/v1/rest/datastore/A-B0062-001?Authorization=CWA-7786AF4C-9989-458E-9234-0F369CEFFABE&locationName=%E8%87%BA%E5%8C%97%E5%B8%82&format=JSON',
+      { method: 'GET', signal: AbortSignal.timeout(8000) }
+    );
+    if (test.ok) {
+      isOffline = false;
+      // 如果已顯示離線警告，移除
+      document.getElementById('offlineAlert').classList.remove('show');
+      document.getElementById('offlineInputs').classList.remove('show');
+      // 如果已選憲兵隊，立即查詢日出日落
+      if (selectedUnit) fetchSunTimes(selectedUnit.addr);
+    } else {
+      showOffline();
+    }
+  } catch(e) {
+    // fetch 失敗 → 真的沒網路或 CORS 擋住
+    if (!navigator.onLine) {
+      showOffline();
+    }
+    // 有網路但 CORS 問題不顯示離線警告
+  }
+}
 
 function showOffline() {
   isOffline = true;
@@ -847,6 +899,14 @@ function extractCity(address) {
   return '臺北市'; // 預設
 }
 
+function debugLog(msg) {
+  const box = document.getElementById('debugBox');
+  const content = document.getElementById('debugContent');
+  if (!box || !content) return;
+  box.style.display = 'block';
+  content.textContent = msg;
+}
+
 async function fetchSunTimes(address) {
   clearSunInfo();
   const el = document.getElementById('sunriseInfo');
@@ -856,6 +916,7 @@ async function fetchSunTimes(address) {
 
   if (isOffline) {
     el.textContent = '🟠 無網路，使用 NOAA 演算法估算。';
+    debugLog('【無網路】isOffline=true，改用NOAA演算法');
     computeSunTimesNoaa(address);
     return;
   }
@@ -882,7 +943,9 @@ async function fetchSunTimes(address) {
     const data = await resp.json();
 
     // ── 印出原始結構供除錯（可打開 F12 主控台查看）
-    console.log('[CWA] raw data:', JSON.stringify(data).slice(0, 800));
+    const rawStr = JSON.stringify(data, null, 2);
+    console.log('[CWA] raw data:', rawStr.slice(0, 800));
+    debugLog('【API 回傳成功】\n' + rawStr.slice(0, 1200) + (rawStr.length > 1200 ? '\n...(截斷)' : ''));
 
     // CWA A-B0062-001 結構：
     // data.records.location[].time[].parameter[]
@@ -917,6 +980,7 @@ async function fetchSunTimes(address) {
     sunsetTime     = todaySunset  || '18:30';
     sunriseNextDay = tomSunrise   || '05:30';
 
+    debugLog(`【解析成功】\n城市: ${city}\n日落: ${sunsetTime}\n日出: ${sunriseNextDay}`);
     el.className = 'sunrise-info success';
     el.textContent = `✅ 氣象局｜${city}　今日日落 ${sunsetTime}　明日日出 ${sunriseNextDay}`;
 
@@ -928,6 +992,7 @@ async function fetchSunTimes(address) {
 
   } catch(e) {
     console.warn('[CWA] error:', e.message);
+    debugLog(`【錯誤】${e.message}\n\n請截圖此訊息回報給製作人`);
     el.className = 'sunrise-info warn';
     el.textContent = `🟠 氣象局查詢失敗（${e.message}），改用 NOAA 估算。`;
     computeSunTimesNoaa(address);
