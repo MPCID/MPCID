@@ -916,7 +916,6 @@ async function fetchSunTimes(address) {
 
   if (isOffline) {
     el.textContent = '🟠 無網路，使用 NOAA 演算法估算。';
-    debugLog('【無網路】isOffline=true，改用NOAA演算法');
     computeSunTimesNoaa(address);
     return;
   }
@@ -930,57 +929,61 @@ async function fetchSunTimes(address) {
   const tomStr = `${tom.getFullYear()}-${pad(tom.getMonth()+1)}-${pad(tom.getDate())}`;
 
   try {
-    // CWA A-B0062-001 日出日沒時刻
-    const url = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/A-B0062-001`
-      + `?Authorization=${CWA_KEY}`
-      + `&locationName=${encodeURIComponent(city)}`
-      + `&timeFrom=${todayStr}`
-      + `&timeTo=${tomStr}`
-      + `&format=JSON`;
+    // Authorization 放在 URL query string（依照 curl 格式）
+    const endpoint = `https://opendata.cwa.gov.tw/linked/graphql?Authorization=${CWA_KEY}`;
 
-    const resp = await fetch(url);
+    const query = `query {
+  forecast(LocationName: "${city}") {
+    Locations {
+      LocationName
+      sunRise(timeFrom: "${todayStr}", timeTo: "${tomStr}") {
+        Date
+        SunRiseTime
+        SunSetTime
+      }
+    }
+  }
+}`;
+
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Connection': 'keep-alive',
+        'DNT': '1',
+        'Origin': 'https://opendata.cwa.gov.tw',
+      },
+      body: JSON.stringify({ query, variables: null }),
+      signal: AbortSignal.timeout(12000),
+    });
+
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
 
-    // ── 印出原始結構供除錯（可打開 F12 主控台查看）
-    const rawStr = JSON.stringify(data, null, 2);
-    console.log('[CWA] raw data:', rawStr.slice(0, 800));
-    debugLog('【API 回傳成功】\n' + rawStr.slice(0, 1200) + (rawStr.length > 1200 ? '\n...(截斷)' : ''));
+    debugLog(`【GraphQL 回傳】
+${JSON.stringify(data, null, 2).slice(0, 800)}`);
 
-    // CWA A-B0062-001 結構：
-    // data.records.location[].time[].parameter[]
-    //   parameter: [{parameterName:"日出時刻", parameterValue:"05:21"}, ...]
-    const locs = data?.records?.location;
-    if (!locs || !locs.length) throw new Error('no location');
+    const locations = data?.data?.forecast?.Locations;
+    if (!locations?.length) throw new Error('no locations — ' + JSON.stringify(data).slice(0,200));
+
+    const sunRiseArr = locations[0]?.sunRise;
+    if (!sunRiseArr?.length) throw new Error('no sunRise array');
 
     let todaySunset = null, tomSunrise = null;
-
-    for (const loc of locs) {
-      for (const t of (loc.time || [])) {
-        const d = (t.dataTime || t.Date || '').slice(0, 10);
-        for (const p of (t.parameter || [])) {
-          const name = p.parameterName || '';
-          const val  = (p.parameterValue || '').slice(0, 5);
-          if (d === todayStr && (name.includes('日沒') || name.includes('日落') || name.includes('Sunset'))) {
-            todaySunset = val;
-          }
-          if ((d === tomStr || d === todayStr) && (name.includes('日出') || name.includes('Sunrise'))) {
-            if (d === tomStr) tomSunrise = val;
-            else if (!tomSunrise) tomSunrise = val; // fallback 用今天日出
-          }
-        }
-      }
+    for (const s of sunRiseArr) {
+      if (s.Date === todayStr) todaySunset = (s.SunSetTime  || '').slice(0, 5);
+      if (s.Date === tomStr)   tomSunrise  = (s.SunRiseTime || '').slice(0, 5);
     }
+    // fallback：若明日資料還沒有，用今日日出代替
+    if (!tomSunrise) tomSunrise = (sunRiseArr[0]?.SunRiseTime || '').slice(0, 5);
 
-    console.log('[CWA] parsed → sunset:', todaySunset, 'sunrise:', tomSunrise);
+    if (!todaySunset || !tomSunrise) throw new Error('找不到日出日落欄位');
 
-    if (!todaySunset && !tomSunrise) throw new Error('parse fail — 請按 F12 查看 console');
+    sunsetTime     = todaySunset;
+    sunriseNextDay = tomSunrise;
 
-    // 若只有今天日出，用它當明天日出近似值
-    sunsetTime     = todaySunset  || '18:30';
-    sunriseNextDay = tomSunrise   || '05:30';
-
-    debugLog(`【解析成功】\n城市: ${city}\n日落: ${sunsetTime}\n日出: ${sunriseNextDay}`);
+    debugLog(`✅ 成功｜${city}　日落:${sunsetTime}　明日日出:${sunriseNextDay}`);
     el.className = 'sunrise-info success';
     el.textContent = `✅ 氣象局｜${city}　今日日落 ${sunsetTime}　明日日出 ${sunriseNextDay}`;
 
@@ -991,8 +994,9 @@ async function fetchSunTimes(address) {
     recalculate();
 
   } catch(e) {
-    console.warn('[CWA] error:', e.message);
-    debugLog(`【錯誤】${e.message}\n\n請截圖此訊息回報給製作人`);
+    debugLog(`【失敗】${e.message}
+
+改用NOAA估算`);
     el.className = 'sunrise-info warn';
     el.textContent = `🟠 氣象局查詢失敗（${e.message}），改用 NOAA 估算。`;
     computeSunTimesNoaa(address);
