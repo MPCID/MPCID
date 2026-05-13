@@ -732,6 +732,31 @@
 
 <script>
 // ─── Data ───────────────────────────────────────────────────────────────────
+// 各憲兵隊座標（lat, lon）供日出日落查詢
+const UNIT_COORDS = {
+  "臺北憲兵隊":  { lat: 25.0435, lon: 121.5088 },
+  "士林憲兵隊":  { lat: 25.0875, lon: 121.5249 },
+  "新北憲兵隊":  { lat: 25.0143, lon: 121.4627 },
+  "基隆憲兵隊":  { lat: 25.1309, lon: 121.7392 },
+  "桃園憲兵隊":  { lat: 24.8809, lon: 121.2893 },
+  "新竹憲兵隊":  { lat: 24.8138, lon: 120.9675 },
+  "宜蘭憲兵隊":  { lat: 24.7136, lon: 121.7677 },
+  "馬祖憲兵隊":  { lat: 26.1505, lon: 119.9290 },
+  "苗栗憲兵隊":  { lat: 24.5600, lon: 120.8214 },
+  "臺中憲兵隊":  { lat: 24.1417, lon: 120.6847 },
+  "彰化憲兵隊":  { lat: 24.0518, lon: 120.5162 },
+  "南投憲兵隊":  { lat: 23.9130, lon: 120.6830 },
+  "雲林憲兵隊":  { lat: 23.7092, lon: 120.5433 },
+  "嘉義憲兵隊":  { lat: 23.4801, lon: 120.4491 },
+  "金門憲兵隊":  { lat: 24.4324, lon: 118.3170 },
+  "臺南憲兵隊":  { lat: 22.9999, lon: 120.2270 },
+  "高雄憲兵隊":  { lat: 22.7214, lon: 120.3929 },
+  "屏東憲兵隊":  { lat: 22.6726, lon: 120.4868 },
+  "花蓮憲兵隊":  { lat: 23.9772, lon: 121.6015 },
+  "臺東憲兵隊":  { lat: 22.7583, lon: 121.1444 },
+  "澎湖憲兵隊":  { lat: 23.5711, lon: 119.5793 },
+};
+
 const HQ_UNITS = {
   "憲兵202指揮部": [
     { name: "臺北憲兵隊", addr: "臺北市中正區中華路一段65號" },
@@ -924,66 +949,69 @@ async function fetchSunTimes(address) {
   const CWA_KEY = 'CWA-7786AF4C-9989-458E-9234-0F369CEFFABE';
   const now = new Date();
   const pad = n => String(n).padStart(2,'0');
-  const todayStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  const todayStr = now.toISOString().split('T')[0];
   const tom = new Date(now); tom.setDate(now.getDate()+1);
-  const tomStr = `${tom.getFullYear()}-${pad(tom.getMonth()+1)}-${pad(tom.getDate())}`;
+  const tomNextDay = new Date(tom); tomNextDay.setDate(tom.getDate()+1);
+  const tomStr = tom.toISOString().split('T')[0];
+  const tomNextStr = tomNextDay.toISOString().split('T')[0];
 
   try {
-    // Authorization 放在 URL query string（依照 curl 格式）
-    const endpoint = `https://opendata.cwa.gov.tw/linked/graphql?Authorization=${CWA_KEY}`;
+    // 使用 CountyName 參數（與原版作者相同）
+    const url = `https://opendata.cwa.gov.tw/api/v1/rest/datastore/A-B0062-001?Authorization=${CWA_KEY}&format=JSON&CountyName=${encodeURIComponent(city)}&timeFrom=${todayStr}&timeTo=${tomNextStr}`;
 
-    const query = `query {
-  forecast(LocationName: "${city}") {
-    Locations {
-      LocationName
-      sunRise(timeFrom: "${todayStr}", timeTo: "${tomStr}") {
-        Date
-        SunRiseTime
-        SunSetTime
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const L = await resp.json();
+
+    debugLog(`【API回傳】success=${L.success}
+${JSON.stringify(L.records).slice(0,600)}`);
+
+    if (L.success !== 'true') throw new Error('success != true');
+
+    // 解析路徑：records.location 或 records.locations.location
+    const locs = (L.records?.location) ||
+                 (L.records?.locations?.location) || [];
+    if (!locs.length) throw new Error('no location data');
+
+    const times = locs[0].time || [];
+    if (!times.length) throw new Error('no time data');
+
+    // 找今天日落、明天日出
+    let todaySunset = null, tomSunrise = null;
+
+    const findParam = (paramArr, keywords) => {
+      const p = paramArr?.find(ae =>
+        keywords.some(k => (ae.parameterName || ae.parameterName2 || '').includes(k))
+      );
+      return p ? (p.parameterValue || '') : null;
+    };
+
+    for (const t of times) {
+      const d = (t.Date || t.dataTime || '').slice(0, 10);
+      const params = t.parameter || [];
+      if (d === todayStr) {
+        todaySunset = findParam(params, ['日沒', '日落', 'Sunset', 'SunSet']);
+      }
+      if (d === tomStr) {
+        tomSunrise = findParam(params, ['日出', 'Sunrise', 'SunRise']);
       }
     }
-  }
-}`;
 
-    const resp = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Connection': 'keep-alive',
-        'DNT': '1',
-        'Origin': 'https://opendata.cwa.gov.tw',
-      },
-      body: JSON.stringify({ query, variables: null }),
-      signal: AbortSignal.timeout(12000),
-    });
-
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-
-    debugLog(`【GraphQL 回傳】
-${JSON.stringify(data, null, 2).slice(0, 800)}`);
-
-    const locations = data?.data?.forecast?.Locations;
-    if (!locations?.length) throw new Error('no locations — ' + JSON.stringify(data).slice(0,200));
-
-    const sunRiseArr = locations[0]?.sunRise;
-    if (!sunRiseArr?.length) throw new Error('no sunRise array');
-
-    let todaySunset = null, tomSunrise = null;
-    for (const s of sunRiseArr) {
-      if (s.Date === todayStr) todaySunset = (s.SunSetTime  || '').slice(0, 5);
-      if (s.Date === tomStr)   tomSunrise  = (s.SunRiseTime || '').slice(0, 5);
+    // fallback：若只有一筆資料
+    if (!todaySunset || !tomSunrise) {
+      for (const t of times) {
+        const params = t.parameter || [];
+        if (!todaySunset) todaySunset = findParam(params, ['日沒', '日落', 'Sunset', 'SunSet']);
+        if (!tomSunrise)  tomSunrise  = findParam(params, ['日出', 'Sunrise', 'SunRise']);
+      }
     }
-    // fallback：若明日資料還沒有，用今日日出代替
-    if (!tomSunrise) tomSunrise = (sunRiseArr[0]?.SunRiseTime || '').slice(0, 5);
 
-    if (!todaySunset || !tomSunrise) throw new Error('找不到日出日落欄位');
+    if (!todaySunset || !tomSunrise) throw new Error('找不到日出日落欄位，請截圖除錯框');
 
-    sunsetTime     = todaySunset;
-    sunriseNextDay = tomSunrise;
+    sunsetTime     = todaySunset.slice(0, 5);
+    sunriseNextDay = tomSunrise.slice(0, 5);
 
-    debugLog(`✅ 成功｜${city}　日落:${sunsetTime}　明日日出:${sunriseNextDay}`);
+    debugLog(`✅ ${city} 日落:${sunsetTime} 日出:${sunriseNextDay}`);
     el.className = 'sunrise-info success';
     el.textContent = `✅ 氣象局｜${city}　今日日落 ${sunsetTime}　明日日出 ${sunriseNextDay}`;
 
@@ -995,7 +1023,6 @@ ${JSON.stringify(data, null, 2).slice(0, 800)}`);
 
   } catch(e) {
     debugLog(`【失敗】${e.message}
-
 改用NOAA估算`);
     el.className = 'sunrise-info warn';
     el.textContent = `🟠 氣象局查詢失敗（${e.message}），改用 NOAA 估算。`;
