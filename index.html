@@ -92,11 +92,12 @@
     background: var(--green-dark);
     border-radius: 4px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 22px; font-weight: bold; color: var(--khaki-light);
     flex-shrink: 0;
     border: 2px solid var(--green);
-    box-shadow: 0 0 10px rgba(79,195,247,0.3), inset 0 0 6px rgba(0,0,0,0.4);
-    clip-path: polygon(4px 0%, 100% 0%, calc(100% - 4px) 100%, 0% 100%);
+    box-shadow: 0 0 10px rgba(79,195,247,0.3);
+    overflow: hidden;
+    clip-path: none;
+    background: transparent;
   }
   header h1 {
     font-size: 1.15rem;
@@ -483,30 +484,6 @@
   ::-webkit-scrollbar-thumb { background: var(--green-dark); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: var(--green); }
 
-  /* 除錯視窗 */
-  #debugBox {
-    display: none;
-    background: #0a0a0a;
-    border: 1px solid var(--amber);
-    border-radius: 4px;
-    padding: 12px;
-    margin-top: 10px;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.72rem;
-    color: var(--amber);
-    white-space: pre-wrap;
-    word-break: break-all;
-    max-height: 300px;
-    overflow-y: auto;
-    line-height: 1.6;
-  }
-  #debugBox .debug-title {
-    color: var(--red);
-    font-size: 0.78rem;
-    margin-bottom: 6px;
-    display: block;
-  }
-
   footer {
     text-align: center;
     font-size: 0.72rem;
@@ -522,7 +499,7 @@
 <body>
 
 <header>
-  <div class="logo">憲</div>
+  <div class="logo"><img src="data:image/png;base64,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" style="width:44px;height:44px;object-fit:contain;"></div>
   <div>
     <h1>解送人犯法定障礙事由計算機（憲兵版）</h1>
     <p>依據《刑事訴訟法》第93條之1　製作人：臺北憲兵隊軍事偵察組調查官吳鋐峮</p>
@@ -628,7 +605,6 @@
         <label>機關地址</label>
         <input type="text" id="address" placeholder="選擇憲兵隊後自動帶入，亦可手動修改">
         <div class="sunrise-info" id="sunriseInfo" style="display:none"></div>
-        <div id="debugBox"><span class="debug-title">🔧 API 除錯訊息（確認後可告知製作人移除）</span><span id="debugContent"></span></div>
       </div>
 
       <!-- Offline inputs -->
@@ -924,14 +900,6 @@ function extractCity(address) {
   return '臺北市'; // 預設
 }
 
-function debugLog(msg) {
-  const box = document.getElementById('debugBox');
-  const content = document.getElementById('debugContent');
-  if (!box || !content) return;
-  box.style.display = 'block';
-  content.textContent = msg;
-}
-
 async function fetchSunTimes(address) {
   clearSunInfo();
   const el = document.getElementById('sunriseInfo');
@@ -990,8 +958,6 @@ async function fetchSunTimes(address) {
 
     sunsetTime     = todaySunset;
     sunriseNextDay = tomSunrise;
-
-    debugLog(`✅ ${city} 日落:${sunsetTime} 日出:${sunriseNextDay}`);
     el.className = 'sunrise-info success';
     el.textContent = `✅ 氣象局｜${city}　今日日落 ${sunsetTime}　明日日出 ${sunriseNextDay}`;
 
@@ -1002,7 +968,6 @@ async function fetchSunTimes(address) {
     recalculate();
 
   } catch(e) {
-    debugLog(`【失敗】${e.message}`);
     el.className = 'sunrise-info warn';
     el.textContent = `🟠 氣象局查詢失敗（${e.message}），改用 NOAA 估算。`;
     computeSunTimesNoaa(address);
